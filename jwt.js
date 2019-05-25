@@ -11,13 +11,13 @@ const {
 
 const badRequestErrorMessage = 'Format is Authorization: Bearer [token]'
 
-function wrapStaticSecretInCallback (secret) {
+function wrapStaticSecretInCallback(secret) {
   return function (request, payload, cb) {
     return cb(null, secret)
   }
 }
 
-function fastifyJwt (fastify, options, next) {
+function fastifyJwt(fastify, options, next) {
   if (!options.secret) {
     return next(new Error('missing secret'))
   }
@@ -54,7 +54,7 @@ function fastifyJwt (fastify, options, next) {
     signOptions.algorithm &&
     signOptions.algorithm.includes('RS') &&
     (typeof secret === 'string' ||
-    secret instanceof Buffer)
+      secret instanceof Buffer)
   ) {
     return next(new Error(`RSA Signatures set as Algorithm in the options require a private and public key to be set as the secret`))
   }
@@ -63,7 +63,7 @@ function fastifyJwt (fastify, options, next) {
     signOptions.algorithm &&
     signOptions.algorithm.includes('ES') &&
     (typeof secret === 'string' ||
-    secret instanceof Buffer)
+      secret instanceof Buffer)
   ) {
     return next(new Error(`ECDSA Signatures set as Algorithm in the options require a private and public key to be set as the secret`))
   }
@@ -84,7 +84,7 @@ function fastifyJwt (fastify, options, next) {
 
   next()
 
-  function decode (token, options) {
+  function decode(token, options) {
     assert(token, 'missing token')
 
     if (!options) {
@@ -94,7 +94,7 @@ function fastifyJwt (fastify, options, next) {
     return jwt.decode(token, options)
   }
 
-  function sign (payload, options, callback) {
+  function sign(payload, options, callback) {
     assert(payload, 'missing payload')
 
     if (typeof options === 'function') {
@@ -113,7 +113,7 @@ function fastifyJwt (fastify, options, next) {
     }
   }
 
-  function verify (token, options, callback) {
+  function verify(token, options, callback) {
     assert(token, 'missing token')
     assert(secretOrPublicKey, 'missing secret')
 
@@ -133,7 +133,7 @@ function fastifyJwt (fastify, options, next) {
     }
   }
 
-  function replySign (payload, options, next) {
+  function replySign(payload, options, next) {
     if (typeof options === 'function') {
       next = options
       options = Object.assign({}, signOptions)
@@ -158,16 +158,16 @@ function fastifyJwt (fastify, options, next) {
     }
 
     steed.waterfall([
-      function getSecret (callback) {
+      function getSecret(callback) {
         secretCallbackSign(reply.request, payload, callback)
       },
-      function sign (secretOrPrivateKey, callback) {
+      function sign(secretOrPrivateKey, callback) {
         jwt.sign(payload, secretOrPrivateKey, options, callback)
       }
     ], next)
   }
 
-  function requestVerify (options, next) {
+  function requestVerify(options, next) {
     if (typeof options === 'function' && !next) {
       next = options
       options = Object.assign({}, verifyOptions)
@@ -187,9 +187,10 @@ function fastifyJwt (fastify, options, next) {
       })
     }
 
-    let token
-    if (request.headers && request.headers.authorization) {
-      let parts = request.headers.authorization.split(' ')
+    let token, tokenHead = request.headers.authorization || request.headers.token
+
+    if (request.headers && tokenHead) {
+      let parts = tokenHead.split(' ')
       if (parts.length === 2) {
         let scheme = parts[0]
         token = parts[1]
@@ -198,7 +199,7 @@ function fastifyJwt (fastify, options, next) {
           return next(new BadRequest(badRequestErrorMessage))
         }
       } else {
-        return next(new BadRequest(badRequestErrorMessage))
+        token = parts[0]
       }
     } else {
       return next(new Unauthorized('No Authorization was found in request.headers'))
@@ -207,10 +208,10 @@ function fastifyJwt (fastify, options, next) {
     let decodedToken = jwt.decode(token, decodeOptions)
 
     steed.waterfall([
-      function getSecret (callback) {
+      function getSecret(callback) {
         secretCallbackVerify(request, decodedToken, callback)
       },
-      function verify (secretOrPublicKey, callback) {
+      function verify(secretOrPublicKey, callback) {
         jwt.verify(token, secretOrPublicKey, options, (err, result) => {
           if (err instanceof jwt.TokenExpiredError) {
             return callback(new Unauthorized('Authorization token expired'))
